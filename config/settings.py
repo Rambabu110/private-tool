@@ -8,12 +8,10 @@ load_dotenv(_BASE_DIR / ".env")
 
 BASE_DIR = _BASE_DIR
 
-# ── NVIDIA NIM Cluster (3 keys loaded from .env) ───────────────────────────
+# ── NVIDIA NIM Cluster (keys loaded from .env) ───────────────────────────
 NIM_API_KEYS = [
     k for k in [
-        os.getenv("NIM_API_KEY_1", ""),
-        os.getenv("NIM_API_KEY_2", ""),
-        os.getenv("NIM_API_KEY_3", ""),
+        os.getenv(f"NIM_API_KEY_{i}", "") for i in range(1, 11)
     ] if k.strip()
 ]
 NIM_BASE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -23,13 +21,14 @@ NIM_MODELS = {
     "deep_reasoning":        "nvidia/nemotron-3-ultra-550b-a55b",
     "ultra_reasoning":       "nvidia/nemotron-3-ultra-550b-a55b",
     "long_context_synthesis": "nvidia/nemotron-3-ultra-550b-a55b",
-    "fast_triage":           "nvidia/nemotron-3-ultra-550b-a55b",
+    "fast_triage":           "nvidia/nemotron-3.5-lightning-30b-a3b",
     "vision_multimodal":     "meta/llama-3.2-90b-vision-instruct",  # Specialized vision multimodal tasks
     "adversarial_critic":    "nvidia/nemotron-3-ultra-550b-a55b",
     # Nemotron specialized swarm roles
     "nemotron_scout":        "nvidia/nemotron-3-ultra-550b-a55b",
     "nemotron_arbiter":      "nvidia/nemotron-3-ultra-550b-a55b",
     "nemotron_ultra":        "nvidia/nemotron-3-ultra-550b-a55b",
+    "lightning_fast":        "nvidia/nemotron-3.5-lightning-30b-a3b",
 }
 
 # ── Swarm Agent Role Matrix ───────────────────────────────────────────────
@@ -72,17 +71,15 @@ LOCAL_OLLAMA_CONFIG = {
 }
 LOCAL_GGUF_CONFIG = LOCAL_OLLAMA_CONFIG  # Backward compatibility alias
 
-# ── LLM Routing Configuration (NIM primary → Local fallback) ───────────────
-# Format: "task_type:provider1,provider2;task_type:provider1"
-# Providers: nim, ollama, llamacpp
-# Arbiter stage uses NIM only (no fallback for final verdict)
+# ── LLM Routing Configuration (NIM primary) ─────────────────────────────────
+# All stages configured to use NVIDIA NIM directly
 LLM_ROUTING = {
-    "scout":        ["nim", "ollama"],
-    "harvester":    ["nim", "ollama"],
-    "defect_miner": ["nim", "ollama"],
-    "economics":    ["nim", "ollama"],
-    "arbiter":      ["nim"],  # Never fallback - final verdict must use NIM
-    "general":      ["nim", "ollama"],
+    "scout":        ["nim"],
+    "harvester":    ["nim"],
+    "defect_miner": ["nim"],
+    "economics":    ["nim"],
+    "arbiter":      ["nim"],
+    "general":      ["nim"],
 }
 
 # ── Data Storage Paths ──────────────────────────────────────────────────────

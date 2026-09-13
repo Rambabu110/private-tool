@@ -232,17 +232,17 @@ RETURN: Final JSON array of ALL products from ALL pages scraped.
                 from browser_use.llm import ChatOpenAI, ChatAnthropic, ChatGoogle
                 import os
 
-                # Initialize LLM - use available provider
+                # Initialize LLM - prioritize Google Gemini 3.6 Flash
                 llm = None
-                if os.getenv("BROWSER_USE_API_KEY"):
+                if os.getenv("GOOGLE_API_KEY"):
+                    llm = ChatGoogle(model="gemini-3.6-flash", api_key=os.getenv("GOOGLE_API_KEY"))
+                elif os.getenv("BROWSER_USE_API_KEY"):
                     from browser_use import ChatBrowserUse
                     llm = ChatBrowserUse()
                 elif os.getenv("OPENAI_API_KEY"):
                     llm = ChatOpenAI(model="gpt-4o-mini")
                 elif os.getenv("ANTHROPIC_API_KEY"):
                     llm = ChatAnthropic(model="claude-3-5-haiku-20241022")
-                elif os.getenv("GOOGLE_API_KEY"):
-                    llm = ChatGoogle(model="gemini-1.5-flash")
                 else:
                     return self._direct_curl_scrape(config, query, max_pages)
 
@@ -485,18 +485,18 @@ RETURN: Final JSON array of ALL products from ALL pages scraped.
         supervisor = get_supervisor()
         task_id = supervisor.register_task("scrape", f"universal_scrape_{query}", marketplace="multi", region=region)
 
-        with supervisor.supervise(task_id) as task:
+        with supervisor.supervise(task_id) as sup_task:
             # Run scrapes in parallel
             tasks = []
             for config in configs:
-                task = self._run_scraper(config, query, max_pages)
-                tasks.append((config["marketplace_name"], task))
+                scraper_coro = self._run_scraper(config, query, max_pages)
+                tasks.append((config["marketplace_name"], scraper_coro))
 
             results = {}
             all_products = []
-            for marketplace_name, task in tasks:
+            for marketplace_name, scraper_coro in tasks:
                 try:
-                    products = await task
+                    products = await scraper_coro
                     results[marketplace_name] = products
                     all_products.extend(products)
 
@@ -513,7 +513,7 @@ RETURN: Final JSON array of ALL products from ALL pages scraped.
                     results[marketplace_name] = []
 
             # Set data for AI Supervisor validation
-            task.data_collected = {"products": all_products, "marketplaces": list(results.keys()), "query": query, "region": region}
+            sup_task.data_collected = {"products": all_products, "marketplaces": list(results.keys()), "query": query, "region": region}
 
             total = sum(len(p) for p in results.values())
             logger.info(f"Universal scrape complete for '{query}' in {region}: {total} products from {len(results)} marketplaces (AI Supervised)")

@@ -67,14 +67,14 @@ class LLMRouter:
     - Arbiter stage: NIM ONLY (no fallback for final verdict)
     """
 
-    # Task → Provider priority (configurable via settings.py LLM_ROUTING)
+    # Task → Provider priority (NIM only)
     DEFAULT_ROUTING = {
-        LLMTaskType.SCOUT:        [LLMProvider.NIM, LLMProvider.OLLAMA],
-        LLMTaskType.HARVESTER:    [LLMProvider.NIM, LLMProvider.OLLAMA],
-        LLMTaskType.DEFECT_MINER: [LLMProvider.NIM, LLMProvider.OLLAMA],
-        LLMTaskType.ECONOMICS:    [LLMProvider.NIM, LLMProvider.OLLAMA],
-        LLMTaskType.ARBITER:      [LLMProvider.NIM],  # Never fallback
-        LLMTaskType.GENERAL:      [LLMProvider.NIM, LLMProvider.OLLAMA],
+        LLMTaskType.SCOUT:        [LLMProvider.NIM],
+        LLMTaskType.HARVESTER:    [LLMProvider.NIM],
+        LLMTaskType.DEFECT_MINER: [LLMProvider.NIM],
+        LLMTaskType.ECONOMICS:    [LLMProvider.NIM],
+        LLMTaskType.ARBITER:      [LLMProvider.NIM],
+        LLMTaskType.GENERAL:      [LLMProvider.NIM],
     }
 
     def __init__(self):

@@ -36,7 +36,7 @@ def launch_web_ui():
     daemon_controller.start()
 
     app_path = Path(__file__).resolve().parent / "web" / "app.py"
-    subprocess.run(["streamlit", "run", str(app_path), "--server.headless", "true"])
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(app_path), "--server.headless", "true"])
 
 
 def run_overnight_daemon():

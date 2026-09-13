@@ -70,9 +70,7 @@ class SupremeNIMCluster:
         if _base_env.exists():
             load_dotenv(_base_env)
         self.keys = [k for k in [
-            os.getenv("NIM_API_KEY_1", ""),
-            os.getenv("NIM_API_KEY_2", ""),
-            os.getenv("NIM_API_KEY_3", ""),
+            os.getenv(f"NIM_API_KEY_{i}", "") for i in range(1, 11)
         ] if k and k.strip()] or [k for k in NIM_API_KEYS if k.strip()]
         if not self.keys and ("PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules):
             self.keys = ["mock-nim-key-1", "mock-nim-key-2", "mock-nim-key-3"]
@@ -102,14 +100,15 @@ class SupremeNIMCluster:
         # Override timeout by task type if not explicitly provided
         if timeout == 4.0:  # default
             timeout = {
-                "fast_triage": 8.0,
-                "adversarial_critic": 20.0,
-                "deep_reasoning": 25.0,
-                "nemotron_scout": 25.0,
-                "nemotron_arbiter": 25.0,
-                "ultra_reasoning": 25.0,
-                "long_context_synthesis": 25.0
-            }.get(task_type, 20.0)
+                "fast_triage": 20.0,
+                "lightning_fast": 20.0,
+                "adversarial_critic": 45.0,
+                "deep_reasoning": 60.0,
+                "nemotron_scout": 60.0,
+                "nemotron_arbiter": 60.0,
+                "ultra_reasoning": 60.0,
+                "long_context_synthesis": 60.0
+            }.get(task_type, 30.0)
 
         truncated_prompt = prompt.strip()[:6000]
         model_name = NIM_MODELS.get(task_type)

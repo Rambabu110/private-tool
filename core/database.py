@@ -1025,16 +1025,23 @@ def get_table_data(table_name: str, limit: int = 200, search_query: str = None) 
     conn.close()
     return rows
 
-def set_human_override(product_id: str, new_status: str) -> bool:
+def set_human_override(product_id: str, new_status: Optional[str]) -> bool:
     """Allows human user to override algorithmic verdicts AND sync all gates."""
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute('''
-            UPDATE master_products
-            SET human_override_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE product_id = ?
-        ''', (new_status, new_status, product_id))
+        if new_status:
+            cur.execute('''
+                UPDATE master_products
+                SET human_override_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE product_id = ?
+            ''', (new_status, new_status, product_id))
+        else:
+            cur.execute('''
+                UPDATE master_products
+                SET human_override_status = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE product_id = ?
+            ''', (product_id,))
         
         # SYNC: Override all gates
         if new_status in ("PASS", "OVERRIDDEN"):
@@ -1069,14 +1076,19 @@ def log_meeting_turn(session_id: str, speaker_name: str, speaker_role: str, avat
     except Exception as e:
         print(f"[Meeting Log Error]: {e}")
 
-def get_meeting_history(session_id: str = None) -> List[Dict[str, Any]]:
+def get_meeting_history(session_id: str = None, limit: int = None) -> List[Dict[str, Any]]:
     """Fetches all logged meeting dialogue from SQLite."""
     conn = get_connection()
     cur = conn.cursor()
+    query = "SELECT * FROM meeting_audit_log"
+    params = []
     if session_id:
-        cur.execute("SELECT * FROM meeting_audit_log WHERE session_id = ? ORDER BY message_id ASC", (session_id,))
-    else:
-        cur.execute("SELECT * FROM meeting_audit_log ORDER BY message_id ASC")
+        query += " WHERE session_id = ?"
+        params.append(session_id)
+    query += " ORDER BY message_id ASC"
+    if limit:
+        query += f" LIMIT {int(limit)}"
+    cur.execute(query, tuple(params))
     rows = [dict(r) for r in cur.fetchall()]
     conn.close()
     return rows

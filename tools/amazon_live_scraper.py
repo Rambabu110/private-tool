@@ -224,17 +224,46 @@ class AmazonLiveScraper:
         }
 
     def _extract_price(self, item) -> Optional[float]:
-        """Robust price extraction handling whole + fraction formats."""
+        """Robust price extraction handling a-offscreen, whole + fraction formats, and regex."""
+        # 1. Try a-offscreen (Amazon's accessible text like '$19.99' or '₹1,299')
+        offscreen = item.select_one(".a-price .a-offscreen") or item.find("span", class_="a-offscreen")
+        if offscreen:
+            text = offscreen.get_text(strip=True)
+            match = re.search(r"[\$₹€£]?\s*([\d,]+(?:\.\d{1,2})?)", text)
+            if match:
+                try:
+                    val = float(match.group(1).replace(",", ""))
+                    if val > 0:
+                        return val
+                except ValueError:
+                    pass
+
+        # 2. Try split whole + fraction
         price_whole = item.find("span", class_="a-price-whole")
         price_fraction = item.find("span", class_="a-price-fraction")
-
         if price_whole:
             whole = re.sub(r"[^\d]", "", price_whole.get_text(strip=True))
             frac = price_fraction.get_text(strip=True) if price_fraction else "00"
             try:
-                return float(whole + "." + frac)
+                val = float(whole + "." + frac)
+                if val > 0:
+                    return val
             except ValueError:
                 pass
+
+        # 3. Fallback: search any .a-price text
+        price_container = item.select_one(".a-price")
+        if price_container:
+            p_text = price_container.get_text(strip=True)
+            match = re.search(r"[\$₹€£]?\s*([\d,]+(?:\.\d{1,2})?)", p_text)
+            if match:
+                try:
+                    val = float(match.group(1).replace(",", ""))
+                    if val > 0:
+                        return val
+                except ValueError:
+                    pass
+
         return None
 
     def _parse_rating(self, text: str) -> Optional[float]:

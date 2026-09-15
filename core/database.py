@@ -941,15 +941,15 @@ def get_active_trend_signals(region: str = None, limit: int = 50) -> List[Dict[s
 
 def record_multi_platform_listing(product_id: str, platform: str, title: str, price: float,
                                   listing_url: str, rating: float = None, review_count: int = 0,
-                                  currency: str = "INR", seller_name: str = None) -> bool:
+                                  currency: str = "INR", seller_name: str = None, in_stock: int = 1, **kwargs) -> bool:
     """Stores cross-platform listings (Flipkart, Meesho, Myntra, Amazon, Shopify)."""
     try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO multi_platform_listings (product_id, platform, title, price, currency, rating, review_count, listing_url, seller_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (product_id, platform, title, float(price), currency, rating, int(review_count), listing_url, seller_name))
+            INSERT INTO multi_platform_listings (product_id, platform, title, price, currency, rating, review_count, listing_url, seller_name, in_stock)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (product_id, platform, title, float(price), currency, rating, int(review_count), listing_url, seller_name, int(in_stock)))
         conn.commit()
         conn.close()
         return True

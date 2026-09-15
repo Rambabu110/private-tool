@@ -2,8 +2,18 @@
 
 # Environment & Secrets
 .env
+.env*
+!.env.example
+*.env
 .env.local
 .env.*.local
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+scratch/
 
 # Database
 *.db

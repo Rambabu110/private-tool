@@ -579,6 +579,10 @@ def seed_database():
     # 2. Insert Products
     for p in PRODUCTS:
         pid = p["product_id"]
+        # Convert any synthetic /dp/ URL to guaranteed live URL
+        from core.utils import get_product_live_url, get_top_5_marketplaces
+        clean_marketplace_url = get_product_live_url(p)
+
         cur.execute("""
             INSERT OR REPLACE INTO master_products (
                 product_id, name, category, region, planned_msrp, landed_cogs,
@@ -594,7 +598,7 @@ def seed_database():
             pid, p["name"], p["category"], p["region"], p["planned_msrp"], p["landed_cogs"],
             p["gross_margin_pct"], p["estimated_cac"], p["net_profit_pct"], p["worst_case_stress_margin_pct"],
             p["status"], p["overall_score"], p["consensus_status"], p["action_plan"], p["sourcing_cluster"],
-            p["marketplace_url"], p["competitor_3star_flaws"], p["upgrade_v2_engineering"],
+            clean_marketplace_url, p["competitor_3star_flaws"], p["upgrade_v2_engineering"],
             p["bsr_rank"], p["estimated_daily_units"], p["ad_active_days"], p["human_override_status"],
             p["first_discovered_date"], p["last_evaluated_date"], p["keepa_price_stability"],
             p["helium_monthly_revenue"], p["factory_cogs"], p["is_shortlisted"], p["trend_source"],
@@ -608,16 +612,16 @@ def seed_database():
             (2, "PASS", "3-Star Flaw Analysis & V2 Engineering Fix Complete", {"flaws": p["competitor_3star_flaws"], "v2": p["upgrade_v2_engineering"]}),
             (3, "PASS", "15-Factor Unit Economics Validated", {"net_pct": p["net_profit_pct"], "gross_pct": p["gross_margin_pct"], "stress_pct": p["worst_case_stress_margin_pct"]}),
             (4, "PASS", "Factory Cluster Quoted & Verified", {"hub": p["sourcing_cluster"], "fob": p["factory_cogs"]}),
-            (5, "PASS", "Multi-Agent War Room Consensus Approved", {"consensus": p["consensus_status"], "score": p["overall_score"]}),
-            (6, "PASS", "Executive Sign-Off & Launchpad PO Ready", {"action_plan": p["action_plan"]}),
+            (5, "PASS", "Multi-Marketplace & Arbitrage Strategy Clear", {"platforms": p["platform_availability"]}),
+            (6, "PASS" if p["status"] == "PASS" else "PENDING", "Final Human / Swarm Approval Complete", {"override": p["human_override_status"]})
         ]
-        now_ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        for g_num, g_stat, g_reason, g_meta in gates_data:
+        for gnum, gstatus, desc, meta in gates_data:
             cur.execute("""
                 INSERT INTO product_gate_progress (
-                    product_id, gate_number, status, blocked_reason, started_at, completed_at, completed_by, metadata_json
-                ) VALUES (?, ?, ?, ?, ?, ?, 'autonomous_swarm', ?)
-            """, (pid, g_num, g_stat, g_reason, now_ts, now_ts, json.dumps(g_meta)))
+                    product_id, gate_number, status, blocked_reason,
+                    started_at, completed_at, completed_by, metadata_json
+                ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'swarm_seed', ?)
+            """, (pid, gnum, gstatus, None if gstatus == "PASS" else "Awaiting consensus", json.dumps(meta)))
 
         # Suppliers
         cur.execute("DELETE FROM product_suppliers WHERE product_id=?", (pid,))
@@ -629,38 +633,39 @@ def seed_database():
                     fob_unit_price, moq_units, sample_cost_leadtime, certifications
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                pid, s["factory_name"], s.get("supplier_type"), s.get("industrial_address"),
+                pid, s.get("factory_name"), s.get("supplier_type"), s.get("industrial_address"),
                 s.get("contact_person"), s.get("contact_details"), s.get("platform_profile_url"),
-                s.get("fob_unit_price"), s.get("moq_units"), s.get("sample_cost_leadtime"),
-                s.get("certifications")
+                s.get("fob_unit_price"), s.get("moq_units"), s.get("sample_cost_leadtime"), s.get("certifications")
             ))
 
-        # Defect Clusters
-        cur.execute("DELETE FROM defect_clusters WHERE product_id=?", (pid,))
-        for d in p.get("defects", []):
+        # Defect clusters
+        cur.execute("DELETE FROM competitor_defect_clusters WHERE product_id=?", (pid,))
+        for d in p.get("defect_clusters", p.get("defects", [])):
+            cluster_name = d.get("cluster_name") or d.get("defect_category", "Unknown Defect")
+            frequency_pct = d.get("frequency_pct") or d.get("frequency_count", 25)
+            example_quote = d.get("example_quote") or d.get("defect_description", "")
             cur.execute("""
-                INSERT INTO defect_clusters (
-                    product_id, defect_category, defect_description, source_platform,
-                    review_rating, frequency_count, severity, is_fixable,
+                INSERT INTO competitor_defect_clusters (
+                    product_id, cluster_name, frequency_pct, example_quote,
                     v2_fix_description, v2_bom_delta_usd
-                ) VALUES (?, ?, ?, 'amazon_reviews', 3.0, ?, ?, 1, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?)
             """, (
-                pid, d["defect_category"], d["defect_description"],
-                d.get("frequency_count", 25), d.get("severity", "HIGH"),
+                pid, cluster_name, frequency_pct, example_quote,
                 d["v2_fix_description"], d.get("v2_bom_delta_usd", 0.3)
             ))
 
-        # Multi-platform listings
+        # Multi-platform listings (Guaranteed top 5 platforms)
         cur.execute("DELETE FROM multi_platform_listings WHERE product_id=?", (pid,))
-        for mpl in p.get("multi_platform", []):
+        top5 = get_top_5_marketplaces(p)
+        for plat in top5:
             cur.execute("""
                 INSERT INTO multi_platform_listings (
                     product_id, platform, title, price, currency, rating,
                     review_count, listing_url, in_stock
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
             """, (
-                pid, mpl["platform"], mpl["title"], mpl["price"], mpl["currency"],
-                mpl["rating"], mpl["review_count"], mpl["listing_url"], mpl.get("in_stock", 1)
+                pid, plat["platform"], p["name"], plat["price"], plat["currency"].strip(),
+                4.6, 150, plat["url"]
             ))
 
         # Launchpad
@@ -761,4 +766,14 @@ def math_cos(x):
     return math.cos(x)
 
 if __name__ == "__main__":
-    seed_database()
+    if "--demo" in sys.argv or "-d" in sys.argv:
+        print("\n=======================================================")
+        print("⚠️  WARNING: SEEDING SYNTHETIC DEMO DATASET FOR APRS")
+        print("This data is for UI layout demonstration and testing only.")
+        print("It does NOT represent real financial market investments.")
+        print("=======================================================\n")
+        seed_database()
+    else:
+        print("\n[INFO] APRS V6 Pro is configured for LIVE REAL-TIME DATA.")
+        print("To load synthetic demo data for testing, run:")
+        print("  python tools/seed_market_data.py --demo\n")

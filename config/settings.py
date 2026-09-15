@@ -16,63 +16,51 @@ NIM_API_KEYS = [
 ]
 NIM_BASE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-# ── NIM Model Matrix (configured for Nemotron 3 Ultra 550B flagship) ─────────
+# ── NIM Model Matrix (configured for verified active endpoints) ─────────
 NIM_MODELS = {
-    "deep_reasoning":        "nvidia/nemotron-3-ultra-550b-a55b",
-    "ultra_reasoning":       "nvidia/nemotron-3-ultra-550b-a55b",
-    "long_context_synthesis": "nvidia/nemotron-3-ultra-550b-a55b",
-    "fast_triage":           "nvidia/nemotron-3.5-lightning-30b-a3b",
-    "vision_multimodal":     "meta/llama-3.2-90b-vision-instruct",  # Specialized vision multimodal tasks
-    "adversarial_critic":    "nvidia/nemotron-3-ultra-550b-a55b",
-    # Nemotron specialized swarm roles
-    "nemotron_scout":        "nvidia/nemotron-3-ultra-550b-a55b",
-    "nemotron_arbiter":      "nvidia/nemotron-3-ultra-550b-a55b",
-    "nemotron_ultra":        "nvidia/nemotron-3-ultra-550b-a55b",
-    "lightning_fast":        "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "deep_reasoning":         "meta/llama-3.2-11b-vision-instruct",
+    "ultra_reasoning":        "meta/llama-3.2-11b-vision-instruct",
+    "long_context_synthesis": "meta/llama-3.2-11b-vision-instruct",
+    "fast_triage":            "meta/llama-3.2-11b-vision-instruct",
+    "vision_multimodal":      "meta/llama-3.2-11b-vision-instruct",
+    "adversarial_critic":     "meta/llama-3.2-11b-vision-instruct",
+    "nemotron_scout":         "meta/llama-3.2-11b-vision-instruct",
+    "nemotron_arbiter":       "meta/llama-3.2-11b-vision-instruct",
+    "nemotron_ultra":         "meta/llama-3.2-11b-vision-instruct",
+    "lightning_fast":         "meta/llama-3.2-11b-vision-instruct",
 }
 
 # ── Swarm Agent Role Matrix ───────────────────────────────────────────────
 SWARM_ROLES = {
     "trend_scout": {
-        "model": "nvidia/nemotron-3-ultra-550b-a55b",
+        "model": "meta/llama-3.2-11b-vision-instruct",
         "task_type": "nemotron_scout",
-        "system_prompt": "You are the Lead Open-Web Trend Scout powered by Nemotron 3 Ultra. Identify emerging high-velocity viral products and evaluate 7-30 day search momentum."
+        "system_prompt": "You are the Lead Open-Web Trend Scout. Identify emerging high-velocity viral products and evaluate search momentum."
     },
     "marketplace_harvester": {
-        "model": "nvidia/nemotron-3-ultra-550b-a55b",
+        "model": "meta/llama-3.2-11b-vision-instruct",
         "task_type": "ultra_reasoning",
-        "system_prompt": "You are the Multi-Marketplace Catalog Harvester powered by Nemotron 3 Ultra. Match trend signals to active high-velocity listings on Amazon, Flipkart, Meesho, and Shopify."
+        "system_prompt": "You are the Multi-Marketplace Catalog Harvester. Match trend signals to active high-velocity listings on Amazon, Flipkart, Meesho, and Shopify."
     },
     "defect_analyst": {
-        "model": "nvidia/nemotron-3-ultra-550b-a55b",
+        "model": "meta/llama-3.2-11b-vision-instruct",
         "task_type": "deep_reasoning",
-        "system_prompt": "You are the Chief Quality Engineer & Defect Miner powered by Nemotron 3 Ultra. Synthesize multi-source 3-star reviews into structural BOM upgrades."
+        "system_prompt": "You are the Chief Quality Engineer & Defect Miner. Synthesize multi-source 3-star reviews into structural BOM upgrades."
     },
     "economics_auditor": {
-        "model": "nvidia/nemotron-3-ultra-550b-a55b",
+        "model": "meta/llama-3.2-11b-vision-instruct",
         "task_type": "long_context_synthesis",
-        "system_prompt": "You are the 15-Factor Unit Economics Lead powered by Nemotron 3 Ultra. Validate landed COGS, RTO reserves, FBA fees, and stress resilience."
+        "system_prompt": "You are the 15-Factor Unit Economics Lead. Validate landed COGS, RTO reserves, FBA fees, and stress resilience."
     },
     "chief_arbiter": {
-        "model": "nvidia/nemotron-3-ultra-550b-a55b",
+        "model": "meta/llama-3.2-11b-vision-instruct",
         "task_type": "nemotron_arbiter",
-        "system_prompt": "You are the Supreme Investment Arbiter powered by Nemotron 3 Ultra. Issue final consensus verdicts and flag false-positive backtrack alerts."
+        "system_prompt": "You are the Supreme Investment Arbiter. Issue final consensus verdicts and flag false-positive backtrack alerts."
     }
 }
 
-# ── Local GGUF Model Paths (loaded from .env; None if not configured) ──────
-# ── Local Offline LLM Configuration (Ollama / Local API Server) ───────────
-LOCAL_OLLAMA_CONFIG = {
-    "ollama_url":     os.getenv("OLLAMA_URL", "http://localhost:11434"),
-    "default_model":  os.getenv("LOCAL_OLLAMA_MODEL", "qwen2.5:14b"),
-    "fallback_model": os.getenv("LOCAL_FALLBACK_MODEL", "llama3.1:8b"),
-    "context_window": 8192,
-    "temperature":    0.2,
-}
-LOCAL_GGUF_CONFIG = LOCAL_OLLAMA_CONFIG  # Backward compatibility alias
-
-# ── LLM Routing Configuration (NIM primary) ─────────────────────────────────
-# All stages configured to use NVIDIA NIM directly
+# ── LLM Routing Configuration (NIM primary, Gemini fallback) ─────────────────
+# No Ollama — user does not have local LLM server
 LLM_ROUTING = {
     "scout":        ["nim"],
     "harvester":    ["nim"],
@@ -81,6 +69,15 @@ LLM_ROUTING = {
     "arbiter":      ["nim"],
     "general":      ["nim"],
 }
+
+# ── Google Trends & Prediction Engine Configuration ──────────────────────────
+GOOGLE_TRENDS_ENABLED = True
+PREDICTION_ENABLED = True
+TRENDING_LOOKBACK_DAYS = 15         # "Last N days" trending window
+PREDICTION_HORIZONS = [15, 30, 90]  # 15 days, 1 month, 3 months
+
+# ── Gemini API (fallback LLM if NIM exhausted) ───────────────────────────────
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
 # ── Data Storage Paths ──────────────────────────────────────────────────────
 DATABASE_PATH      = BASE_DIR / "data" / "research_engine.db"

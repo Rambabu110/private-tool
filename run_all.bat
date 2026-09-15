@@ -1,11 +1,13 @@
 @echo off
 title APRS V6 Pro - All-In-One Runner
 echo ===================================================
-echo [1/4] Seeding Verified E-Commerce Intelligence Data...
+echo [1/4] Initializing Database Schema...
 echo ===================================================
-.\.venv\Scripts\python.exe tools\seed_market_data.py
+echo NOTE: Fake demo data is NOT auto-loaded.
+echo       To seed demo data, run: python tools\seed_market_data.py --demo
+.\.venv\Scripts\python.exe -c "from core.database import init_db; init_db(); print('Database schema initialized.')"
 if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Data seeding failed.
+    echo [ERROR] Database initialization failed.
     pause
     exit /b %ERRORLEVEL%
 )
